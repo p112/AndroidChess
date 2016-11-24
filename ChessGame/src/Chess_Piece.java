@@ -24,12 +24,12 @@ public abstract class Chess_Piece
      * @param col the position of the Piece along the y-axis
      * @param colour the player that the piece should be assigned to
      */
-    public Chess_Piece( int row, int col, int colour, Image iconImage, Chess_Board board )
+    public Chess_Piece( int row, int col, int colour, Image icon_image, Chess_Board board )
     {
         this.row = row;
         this.col = col;
         this.colour = colour;
-        icon_image = iconImage;
+        this.icon_image = icon_image;
         this.board = board;
     }
 
@@ -138,5 +138,4 @@ public abstract class Chess_Piece
     {
         return icon_image;
     }
-
 }

@@ -19,6 +19,7 @@ import javax.swing.JButton;
 import javax.swing.ImageIcon;
 import javax.swing.SwingConstants;
 import java.util.List;
+import java.util.ArrayList;
 import java.net.URL;
 
 /**
@@ -27,73 +28,27 @@ import java.net.URL;
  */
 public final class Chess_Board implements ActionListener
 {
-    /**
-     * The panel that encapsulates the <code>Chess_Board</code>
-     **/
-    private final JPanel panel_gui = new JPanel( new BorderLayout( 3, 3 ) );
+    private final JPanel            panel_gui = new JPanel( new BorderLayout( 3, 3 ) );
 
-    /**
-     * The <code>Chess_Board</code> is comprised of 8 * 8 squares. Each square is graphically
-     * represented by a <code>JButton</code>.
-     */
-    private final JButton[][] chess_board_squares;
+    private JPanel                  chess_board_panel;
+    private final JButton[][]       chess_board_squares;
+    private final Chess_Piece[][]   chess_board_pieces;
 
-    /**
-     * The panel that encapsulates the <code>Chess_Board</code>
-     **/
-    private JPanel chess_board_panel;
+    private final Image[][]         chess_piece_images;
 
-    /**
-     * The chess pieces stored within a two dimensional array
-     **/
-    private final Chess_Piece[][] chess_pieces;
+    private static final String     COLS = "ABCDEFGH";
 
-    /**
-     * The chess piece images stored within a two-dimensional array
-     **/
-    private final Image[][] chess_piece_images;
+    private int                     active_player;
+    private int                     inactive_player;
 
-    /**
-     * The columns that surround the <code>Chess_Board</code>.
-     **/
-    private static final String COLS = "ABCDEFGH";
+    private Square                  active_square;
+    private boolean                 is_square_active;
 
-    /**
-     * The active square, i.e. the last square to have been clicked by the player.
-     **/
-    private Square active_square;
+    private boolean                 display_valid_moves;
+    private boolean                 display_pieces_under_attack;
 
-    /**
-     * Flag is true when a square has been clicked and therefore considered active, false otherwise
-     **/
-    private boolean is_square_active;
+    private int                     games_played;
 
-    /**
-     * Variable is set to true when the player has requested that when they click on one of their
-     * chess pieces, all of the valid moves relating to that chess piece are graphically represented
-     * on the chess board.
-     */
-    private boolean display_valid_moves;
-
-    /**
-     * Variable is set to true when the player has requested that their own chess pieces
-     * are highlighted when they are under attack.
-     */
-    private boolean display_pieces_under_attack;
-
-    /**
-     * Indicates the active player, i.e. white or black.
-     **/
-    private int active_player;
-
-    /**
-     * The number of games that have already been played.
-     */
-    private int game_count;
-
-    /**
-     * The size of the <code>Chess_Board</code>.
-     **/
     public static final int BOARD_SIZE = 8;
 
     public static final int QUEEN = 0, KING = 1, ROOK = 2, KNIGHT = 3,
@@ -110,19 +65,14 @@ public final class Chess_Board implements ActionListener
      */
     public Chess_Board()
     {
-        game_count = 0;
-
-        chess_pieces = new Chess_Piece[ BOARD_SIZE ][ BOARD_SIZE ];
-        chess_piece_images = new Image[ 2 ][ 6 ];
-
-        chess_board_squares = new JButton[ BOARD_SIZE ][ BOARD_SIZE ];
-        active_square = new Square( 0, 0 );
-        is_square_active = false;
-
-        display_valid_moves = false;
+        games_played                = 0;
+        chess_board_pieces          = new Chess_Piece[ BOARD_SIZE ][ BOARD_SIZE ];
+        chess_piece_images          = new Image[ 2 ][ 6 ];
+        chess_board_squares         = new JButton[ BOARD_SIZE ][ BOARD_SIZE ];
+        active_square               = new Square( 0, 0 );
+        is_square_active            = false;
+        display_valid_moves         = false;
         display_pieces_under_attack = false;
-
-        active_player = WHITE;
 
         initialise();
     }
@@ -135,7 +85,6 @@ public final class Chess_Board implements ActionListener
         create_gui();
         create_squares();
         create_chess_piece_images();
-
     }
 
     private void create_gui()
@@ -151,8 +100,7 @@ public final class Chess_Board implements ActionListener
     }
 
     /**
-     * Creates all of the chess pieces and moves them to their default
-     * start position.
+     * Creates all of the chess pieces and positions them correctly on the chess board.
      */
     private void create_chess_pieces()
     {
@@ -189,13 +137,12 @@ public final class Chess_Board implements ActionListener
      */
     private void delete_chess_pieces()
     {
+        Game.get_player( WHITE ).get_chess_pieces().clear();
+        Game.get_player( BLACK ).get_chess_pieces().clear();
+
         for( int row = 0; row < BOARD_SIZE; row++ )
-        {
             for( int col = 0; col < BOARD_SIZE; col++ )
-            {
-                chess_pieces[ row ][ col ] = null;
-            }
-        }
+                chess_board_pieces[ row ][ col ] = null;
     }
 
     /**
@@ -303,66 +250,6 @@ public final class Chess_Board implements ActionListener
     }
 
     /**
-     * This method returns the number of points a player can get when capturing a piece
-     * at ( row, col ). This method is for AI purposes and suggesting
-     * player moves.
-     */
-    private int get_capture_points( int row, int col )
-    {
-        int capture_points;
-        switch( piece_at( row, col ).toString() )
-        {
-            case "Pawn":
-                capture_points = PAWN;
-                break;
-
-            case "Knight":
-                capture_points = KNIGHT;
-                break;
-
-            case "Bishop":
-                capture_points = BISHOP;
-                break;
-
-            case "Queen":
-                capture_points = QUEEN;
-                break;
-
-            case "King":
-                capture_points = KING;
-                break;
-
-            case "Rook":
-                capture_points = ROOK;
-                break;
-
-            default:
-                capture_points = 0;
-                break;
-        }
-        return capture_points;
-    }
-
-    /**
-     * This methods checks all the valid moves a chess piece can make and then
-     * calculates a point value based on the number of pieces it can potentially
-     * capture on it's next move.
-     *
-     * @param piece
-     * @return
-     */
-    private int get_attack_points( Chess_Piece piece )
-    {
-        int attack_points = 0;
-
-        List< Square > moves = piece.all_valid_moves( this );
-        for( Square move : moves )
-            attack_points += get_capture_points( move.get_row(), move.get_col() );
-
-        return attack_points;
-    }
-
-    /**
      * This method is called when one of the board squares
      * are clicked by the player. It calls the event handler
      * that relates to the square that has been clicked.
@@ -391,7 +278,7 @@ public final class Chess_Board implements ActionListener
      */
     public Chess_Piece piece_at( int row, int col )
     {
-        return chess_pieces[ row ][ col ];
+        return chess_board_pieces[ row ][ col ];
     }
 
     /**
@@ -401,7 +288,16 @@ public final class Chess_Board implements ActionListener
      */
     private void add_piece( Chess_Piece piece )
     {
-        chess_pieces[ piece.get_row() ][ piece.get_col() ] = piece;
+        chess_board_pieces[ piece.get_row() ][ piece.get_col() ] = piece;
+
+        if( WHITE == piece.get_colour() )
+        {
+            Game.get_player( WHITE ).add_chess_piece( piece );
+        }
+        else
+        {
+            Game.get_player( BLACK ).add_chess_piece( piece );
+        }
     }
 
     /**
@@ -412,7 +308,8 @@ public final class Chess_Board implements ActionListener
      */
     private void remove_piece( int row, int col )
     {
-        chess_pieces[ row ][ col ] = null;
+        Game.get_player( piece_at( row, col ).get_colour() ).remove_chess_piece( piece_at( row, col ) );
+        chess_board_pieces[ row ][ col ] = null;
     }
 
     /**
@@ -439,7 +336,7 @@ public final class Chess_Board implements ActionListener
         {
             if( null != piece_at( row, col ) )
             {
-                if( piece_at( row, col ).get_colour() == get_active_player() )
+                if( piece_at( row, col ).get_colour() == Game.get_player( get_active_player() ).get_colour() )
                 {
                     set_activated_square( row, col );
                     highlight_square( row, col, Color.BLACK );
@@ -529,19 +426,14 @@ public final class Chess_Board implements ActionListener
      */
     private void show_pieces_under_attack()
     {
-        for( int row = 0; row < Chess_Board.BOARD_SIZE; row++ )
+        for( Chess_Piece player_piece : Game.get_player( get_active_player() ).get_chess_pieces() )
         {
-            for( int col = 0; col < Chess_Board.BOARD_SIZE; col++ )
+            for( Chess_Piece enemy_piece : Game.get_player( get_inactive_player() ).get_chess_pieces() )
             {
-                if( null != piece_at( row, col ) )
+                if( enemy_piece.can_move_to( player_piece.get_row(), player_piece.get_col(), this ) )
                 {
-                    if( get_active_player() == piece_at( row, col ).get_colour() )
-                    {
-                        if( piece_at( row, col ).under_attack( row, col, this ) )
-                        {
-                            highlight_square( row, col, Color.RED );
-                        }
-                    }
+                    highlight_square( player_piece.get_row(), player_piece.get_col(), Color.RED );
+                    break;
                 }
             }
         }
@@ -595,8 +487,8 @@ public final class Chess_Board implements ActionListener
     private void move_piece( Square from, Square to )
     {
         piece_at( from.get_row(), from.get_col() ).move_to( to.get_row(), to.get_col() );
-        chess_pieces[ to.get_row() ][ to.get_col() ] = piece_at( from.get_row(), from.get_col() );
-        chess_pieces[ from.get_row() ][ from.get_col() ] = null;
+        chess_board_pieces[ to.get_row() ][ to.get_col() ] = piece_at( from.get_row(), from.get_col() );
+        chess_board_pieces[ from.get_row() ][ from.get_col() ] = null;
         chess_board_squares[ to.get_row() ][ to.get_col() ].setIcon( new ImageIcon( piece_at( to.get_row(), to.get_col() ).get_icon_image() ) );
         chess_board_squares[ from.get_row() ][ from.get_col() ].setIcon( null );
     }
@@ -645,7 +537,7 @@ public final class Chess_Board implements ActionListener
      */
     public void new_game()
     {
-        if( game_count > 0 )
+        if( games_played > 0 )
         {
             delete_chess_pieces();
             unselect_all();
@@ -714,8 +606,7 @@ public final class Chess_Board implements ActionListener
     }
 
     /**
-     * Returns an integer indicating the active player. 0 indicates BLACK whereas
-     * 1 indicates WHITE
+     * Returns the active player
      *
      * @return
      */
@@ -733,6 +624,27 @@ public final class Chess_Board implements ActionListener
     private void set_active_player( int player )
     {
         active_player = player;
+    }
+
+    /**
+     * Returns the inactive player
+     *
+     * @return
+     */
+    public int get_inactive_player()
+    {
+        return inactive_player;
+    }
+
+    /**
+     * Sets the inactive player. 0 indicates BLACK whereas
+     * 1 indicates WHITE
+     *
+     * @param player the inactive player
+     */
+    private void set_inactive_player( int player )
+    {
+        inactive_player = player;
     }
 
     /**

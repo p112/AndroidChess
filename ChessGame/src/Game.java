@@ -11,9 +11,12 @@ import java.awt.event.ActionListener;
 /**
  * The <code>Game</code> class is the primary class for the chess application.
  */
-public class Game extends JFrame implements ActionListener
+public final class Game extends JFrame implements ActionListener
 {
     private Chess_Board chess_board;
+
+    private static Player  white_player;
+    private static Player  black_player;
 
     public static final int BLACK = 0, WHITE = 1;
 
@@ -23,6 +26,8 @@ public class Game extends JFrame implements ActionListener
     public Game()
     {
         super("Danny's Chess Game");
+        white_player = new Player( WHITE );
+        black_player = new Player( BLACK );
     }
 
     /**
@@ -58,6 +63,14 @@ public class Game extends JFrame implements ActionListener
      */
     public void game_loop()
     {
+    }
+
+    /**
+     * New Game
+     */
+    public void new_game()
+    {
+
     }
 
     /**
@@ -168,6 +181,22 @@ public class Game extends JFrame implements ActionListener
             default:
                 System.out.println( "Unknown action in Game detected");
                 break;
+        }
+    }
+
+    /**
+     * Returns the white/black player
+     * @param colour the player of the colour
+     */
+    public static Player get_player( int colour )
+    {
+        if( WHITE == colour )
+        {
+            return white_player;
+        }
+        else
+        {
+            return black_player;
         }
     }
 
